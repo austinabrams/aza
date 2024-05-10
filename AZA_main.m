@@ -1,18 +1,14 @@
-%% Keithley Controller and Zeta Tracker
-% Last updated 9-18-19 by Austin Abrams
-% Thanks for letting me join your work! Keep me in the loop! -Bennett
+%% Automated Zeta Potential Analysis .m file
+% Keithley Controller and Zeta Tracker
+% Last updated October 3, 2022
 
 clear all; close all;
 
-% PLOT TITLE
-
-yourmail = {'austinabrams@ucsb.edu','lalford@ucsb.edu','bcoy@ucsb.edu'};         % {'bcoy@ucsb.edu','austinabrams@ucsb.edu'} Email address to send final FIG & JPEG
-folder = 'C:\Users\nanolab\Box\Pennathur lab\Capillary Data\tmp-backrightGPIB27'; % Local address to save FIG and DATA
-% C:\Users\nanolab\nanolab\Desktop\Austin
-chan = 'C565-40x7.83-APS+6mV: 2mM/0.56uL APTMS 1.5/1.5mL .9X/1X TBS 8.51 240rpm'; % 14.7mM Tris \sigma 1.92 pH 7.25'; %  REFRESHED 2.67uM SDS no OTAB .9/1X PBS pH7.05 1.744S/m 300rpm   % Name of channel
-res = '(+)0.9X (-)1X';
-d = 39.5e-6;    %100e-9     % Diameter/height channel
-L = 7.83e-3;        % Length (m) -> use calipers in lab
+yourmail = {''};  % Insert Email address(es) to send final FIG & JPEG
+folder = ''; % Insert Local address to save FIG and DATA
+chan = ''; %  % Insert Name of Experiment to go on Plot Title
+d = 39.5e-6;    % 100e-9     % Insert Diameter/height channel
+L = 7.83e-3;        % Insert Length (m) -> use calipers in lab
 type = 'Cap';       % Enter Cap (capillary) or Sol (Solomon)
 if strcmp(type,'Sol')
     A = 500e-9*5e-6;         % X-sect Area
@@ -21,23 +17,23 @@ else
     A = pi*(d/2)^2;     % X-sect Area
 end
 solv = 1;        % Type 1 (H2O) or 2 (MeOH) for solvent
-sig = 1.75;        % Cond S/m 1X: 1.75. 1mM: 0.01496; .1X: 0.11*1X
+sig = 1.75;        % Conductivity S/m 
 pH = '7.2';             % pH measured w/ freshly calibrated meter
 buf_mM = '10';
-buf = 'PB';       % Buffer name Tris / CAPS / H2SO4
+buf = '';       % Buffer name Tris / CAPS / H2SO4
 elec_mM = '0';
-elec = 'NaCl';      % Electrolyte name NaCl / KCl
-dateFilt = '8.11.22';          % Date solution was filtered
+elec = '';      % Electrolyte name NaCl / KCl
+dateFilt = '';          % Date solution was filtered
 L_ratio = round(L/8e-3);
 
-% Select left or right ('L'/'R') Faraday cage
 % Range: L) 0-1000 V, I=0-1 mA; R) 0-1100 V, I=0-105 uA.
 GPIB = 24;          % Open NI-VISA and Lookup primary address (after GPIB0:)
 boardInd = 0;       % Lookup board index w/ NI-VISA (# before colon, 1 or 0) 
-process = 2;        % Process
+process = 2;        % Process (1: constant voltage polarity; 2: alternating voltage polarity with or without autoSwitch; 3: combination of 1 and 2, 4: maintain net EOF+EP transport distance per cycle)
 tfinal = 5*24*3600;   % Total seconds of Zeta monitoring
-% I_range = 200e-9;   % Enter predefined range
-% process 2 settings below
+% I_range = 200e-9;   % Enter predefined range, or comment out to calculate based on conductivity and channel area
+
+% Enter Process 2 settings below:
 I_autorange = 0;    % Enter 1 to use autorange, 0 to use I_range
 splitter = 0;       % E1 to use splitter card
 channels = '1';  % enter channels 'a,b,c' to alternate measurement
@@ -49,7 +45,7 @@ minCurrChange = 0.04;
 % P1, P2 for autoswitch endpoint detection
 % 0.01PLC and 0.1PLC both produce 20 pts/s
 
-% Run constant voltage
+% Process 1: Run constant voltage
 if process==1    
 	vout1 = +10*1e3*L;  %+30*1e3*L
     E_ratio = vout1/L/30e3;
@@ -59,7 +55,8 @@ if process==1
     I_autorange = 1;    % Enter 1 to use autorange, 0 to use I_range
     I_range = 0;
     liveplot = 1;
-% Flip voltage polarity every tcycle
+
+% Process 2: Flip voltage polarity every tcycle
 elseif process==2
 	vout1 = +30*1e3*L;  %+30*1e3*L
     E_ratio = vout1/L/30e3;
@@ -78,10 +75,8 @@ elseif process==2
     minSlope = 6e-7*Ipred; % Don't find endpoint / autoSwitch if slope now < minSlope
     d1_smooth = 1;  % Control data smoothing (n>1: range = d1_smooth*3 pts, 0 or 1: range=3 pts)
     liveplot = 1;
-    
 
-    % Add Volt-hold intervals when t>=hold(i) && found==1
-
+% Process 3: Add Volt-hold intervals when t>=hold(i) && found==1
 elseif process==3
 	vout1 = +62.5*1e3*L;  %+30*1e3*L
     E_ratio = vout1/L/30e3;
@@ -126,7 +121,9 @@ elseif process==3
     hold_V = hold_V*60;         % convert hold start mins to sec's
     hold_t = hold_t*60;         % convert hold mins to sec's
     a = 1;                      % index of hold_V cycles
-elseif process == 4     % maintain net EOF+EP transport distance per cycle
+
+% Process 4: maintain net EOF+EP transport distance per cycle
+elseif process == 4    
   	vout1 = +30*1e3*L;  %+30*1e3*L
     E_ratio = vout1/L/30e3;
     I_autorange = 1;    % Enter 1 to use autorange, 0 to use I_range
@@ -146,8 +143,7 @@ elseif process == 4     % maintain net EOF+EP transport distance per cycle
     minSlope = 6e-7*Ipred; % Don't find endpoint / autoSwitch if slope now < minSlope
     d1_smooth = 1;  % Control data smoothing (n>1: range = d1_smooth*3 pts, 0 or 1: range=3 pts)
     liveplot = 0;
-  
-
+    
 end
 
 % DO NOT CHANGE PARAMETERS BEYOND THIS POINT
@@ -179,7 +175,7 @@ elseif solv == 2
 end
 
 name = strcat(chan,',',32,...
-...%  	num2str(d*1e6),'µm,',32,...
+...%  	num2str(d*1e6),'Âµm,',32,...
 ...% 	num2str(E/1e3),'kV/m,'...
 num2str(E/1e3),'kV');
 ...% ,32,num2str(tCycle),'s,');
